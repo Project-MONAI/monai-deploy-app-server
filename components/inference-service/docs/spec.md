@@ -1,5 +1,5 @@
 ## Overview
-As data scientists & application developers build AI models they need a way to deploy these applications in production. MONAI Inference Service will be used to deploy a MONAI application. This proposal documents the requirements for the MONAI Inference Service (MIS).
+As data scientists & application developers build AI models they need a way to deploy these applications in production. MONAI Inference Service will be used to deploy a MONAI application. This proposal documents the requirements and the design for the MONAI Inference Service (MIS).
 
 ## Goal
 The goal for this proposal is to enlist, prioritize and provide clarity on the requirements for MIS. Developers working on different software modules in MIS SHALL use this specification as a guideline when designing and implementing software for the Service.
@@ -9,7 +9,7 @@ MIS SHALL provide a REST based RPC API for client to communicate with.
 
 MIS SHALL support configuration of the [MONAI Application Package(MAP)](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md]) used to service inference requests. 
 
-MIS SHALL provide an API to upload datasets to perform inferencing on.
+MIS SHALL provide an REST API to upload inputs to perform inferencing on.
 
 MIS SHALL return inference results as part of the response to the originating inference request.
 
@@ -40,7 +40,34 @@ MIS SHALL provision CPU, memory, and GPU resources for an inference request as d
 MIS SHALL provide results of inference request as a part of the response to the request.
 
 ### SHALL NOT persist request inputs or inference results
-MIS SHALL NOT persist inference request inputs or inference results beyond the lifetime of the originating inferencing request
+MIS SHALL NOT persist inference request inputs or inference results beyond the lifetime of the originating inferencing request.
 
 ## Limitations
 MIS SHALL service inference requests one at a time.
+
+## Design
+
+### Mechanism for deployment
+MIS SHALL be deployed via a Helm chart in a Kubernetes cluster.
+
+### Mechanism for MAP selection/inclusion
+MIS SHALL use the deployment configuration specified in the Helm charts for selecting the MAP to run.
+
+### Mechanism for inference request handling
+- Clients submit an inference request using a POST REST API call to the MIS. 
+- MIS SHALL decompress the inputs provided in the inference request into a location that can be accessed by the MAP container.
+- MIS SHALL deploy a [Kubernetes job](https://kubernetes.io/docs/concepts/workloads/controllers/job/) for the MAP container using the configuration specified in the Helm charts of the MIS.
+- MIS SHALL then monitor the progress of the Kubernetes job.
+- MIS SHALL return a success code [200 OK] (https://en.wikipedia.org/wiki/List_of_HTTP_status_codes) when the job completes along with a zipped version of the outputs.
+
+### Detail data input and output formats
+- MIS SHALL only accept inputs in a `.zip` format.  
+- The zipped file inputs SHALL be decompressed and loaded directly in the input folder of a MAP.
+- The output of a MAP SHALL be compressed by the MIS and sent back as a part of the response of the inference request.
+
+### Mechanism for error handling
+- If the Kubernetes job does not complete within the timeout(50 seconds), MIS SHALL terminate the job and return the HTTP error code [408 Request Timeout](https://en.wikipedia.org/wiki/List_of_HTTP_status_codes).
+- If the Kubernetes job fails, MIS SHALL return a custom HTTP error code 531.  
+
+### Mechanism for logging
+MIS logs can be obtained from Kubernetes.
