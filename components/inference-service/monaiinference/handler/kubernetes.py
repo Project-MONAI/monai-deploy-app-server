@@ -10,18 +10,23 @@
 # limitations under the License.
 
 import os
+import enum
 import time
 
 from kubernetes import client
 from kubernetes.client import models
 
-API_VERSION_FOR_JOBS = "batch/v1"
+API_VERSION_FOR_PODS = "v1"
 API_VERSION_FOR_PERSISTENT_VOLUME = "v1"
 API_VERSION_FOR_PERSISTENT_VOLUME_CLAIM = "v1"
 DEFAULT_NAMESPACE = "default"
+DEFAULT_STORAGE_SPACE = "10Gi"
 DIRECTORY_OR_CREATE = "DirectoryOrCreate"
-JOB = "Job"
-JOB_NAME = "monai-job"
+IF_NOT_PRESENT = "IfNotPresent"
+MAP = "map"
+MONAI = "monai"
+POD = "Pod"
+POD_NAME = "monai-pod"
 PERSISTENT_VOLUME = "PersistentVolume"
 PERSISTENT_VOLUME_CLAIM = "PersistentVolumeClaim"
 PERSISTENT_VOLUME_CLAIM_NAME = "monai-volume-claim"
@@ -30,22 +35,31 @@ READ_WRITE_ONCE = "ReadWriteOnce"
 RESTART_POLICY_NEVER = "Never"
 STORAGE = "storage"
 STORAGE_CLASS_NAME = "monai-storage-class"
+WAIT_TIME_FOR_POD_COMPLETION = 50
 
 
 class KubernetesHandler:
-    'TODO: Documentation for K8s Handler'
+    """KubernetesHandler is a class to handle interactions with kubernetes for fulflling an inference request."""
 
     def __init__(self, config):
-        # Initialize kubernetes clients
-        self.kubernetes_batch_client = client.BatchV1Api()
+        # Initialize kubernetes client and handler configuration.
         self.kubernetes_core_client = client.CoreV1Api()
         self.config = config
 
-    def __create_container_template(self) -> models.V1Container:
+    def __build_resources_requests(self) -> models.V1ResourceRequirements:
+        # Derive CPU, memory(in Megabytes) and GPU limits for container from handler configuration.
+        limits = {
+            "cpu": str(self.config.map_cpu),
+            "memory": str(self.config.map_memory) + "Mi",
+            "nvidia.com/gpu": str(self.config.map_gpu)
+        }
 
-        input_path = self.config.map_input_path
-        if (os.path.isabs(input_path) is False):
-            input_path = '/' + input_path
+        resources = models.V1ResourceRequirements(limits=limits)
+        return resources
+
+    def __build_container_template(self) -> models.V1Container:
+        # Derive container input path for defining input mount.
+        input_path = os.path.join("/", self.config.map_input_path)
 
         input_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
@@ -54,9 +68,8 @@ class KubernetesHandler:
             read_only=True
         )
 
-        output_path = self.config.map_output_path
-        if (os.path.isabs(output_path) is False):
-            output_path = '/' + output_path
+        # Derive container output path for defining output mount.
+        output_path = os.path.join("/", self.config.map_output_path)
 
         output_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
@@ -64,63 +77,62 @@ class KubernetesHandler:
             sub_path=output_path[1:],
         )
 
+        # Build container object.
         container = models.V1Container(
-            name="map",
+            name=MAP,
             image=self.config.map_urn,
             command=self.config.map_entrypoint,
-            image_pull_policy="IfNotPresent",
+            image_pull_policy=IF_NOT_PRESENT,
+            resources=self.__build_resources_requests(),
             volume_mounts=[input_mount, output_mount]
         )
 
         return container
 
-    def __create_kubernetes_job(self) -> models.V1Job:
-        container = self.__create_container_template()
+    def __build_kubernetes_pod(self) -> models.V1Pod:
+        container = self.__build_container_template()
 
-        job = models.V1Job(
-            api_version=API_VERSION_FOR_JOBS,
-            kind=JOB,
+        # Build pod object.
+        pod = models.V1Pod(
+            api_version=API_VERSION_FOR_PODS,
+            kind=POD,
             metadata=models.V1ObjectMeta(
-                name=JOB_NAME,
+                name=POD_NAME,
                 labels={
-                    "job-name": JOB_NAME,
-                    "job-type": "monai"
+                    "pod-name": POD_NAME,
+                    "pod-type": MONAI
                 }
             ),
-            spec=models.V1JobSpec(
-                template=models.V1PodTemplateSpec(
-                    spec=models.V1PodSpec(
-                        containers=[container],
-                        restart_policy=RESTART_POLICY_NEVER,
-                        volumes=[
-                            models.V1Volume(
-                                name=PERSISTENT_VOLUME_CLAIM_NAME,
-                                persistent_volume_claim=models.V1PersistentVolumeClaimVolumeSource(
-                                    claim_name=PERSISTENT_VOLUME_CLAIM_NAME,
-                                ),
-                            )
-                        ]
+            spec=models.V1PodSpec(
+                containers=[container],
+                restart_policy=RESTART_POLICY_NEVER,
+                volumes=[
+                    models.V1Volume(
+                        name=PERSISTENT_VOLUME_CLAIM_NAME,
+                        persistent_volume_claim=models.V1PersistentVolumeClaimVolumeSource(
+                            claim_name=PERSISTENT_VOLUME_CLAIM_NAME,
+                        ),
                     )
-                )
+                ]
             )
         )
 
-        return job
+        return pod
 
-    def __create_kubernetes_persistent_volume(self) -> models.V1PersistentVolume:
+    def __build_kubernetes_persistent_volume(self) -> models.V1PersistentVolume:
         persistent_volume = models.V1PersistentVolume(
             api_version=API_VERSION_FOR_PERSISTENT_VOLUME,
             kind=PERSISTENT_VOLUME,
             metadata=models.V1ObjectMeta(
                 name=PERSISTENT_VOLUME_NAME,
                 labels={
-                    "volume-type": "monai"
+                    "volume-type": MONAI
                 }
             ),
             spec=models.V1PersistentVolumeSpec(
                 access_modes=[READ_WRITE_ONCE],
                 capacity={
-                    STORAGE: "10Gi",
+                    STORAGE: DEFAULT_STORAGE_SPACE,
                 },
                 host_path=models.V1HostPathVolumeSource(
                     path=self.config.payload_host_path,
@@ -132,21 +144,21 @@ class KubernetesHandler:
 
         return persistent_volume
 
-    def __create_kubernetes_persistent_volume_claim(self) -> models.V1PersistentVolumeClaim:
+    def __build_kubernetes_persistent_volume_claim(self) -> models.V1PersistentVolumeClaim:
         persistent_volume_claim = models.V1PersistentVolumeClaim(
             api_version=API_VERSION_FOR_PERSISTENT_VOLUME_CLAIM,
             kind=PERSISTENT_VOLUME_CLAIM,
             metadata=models.V1ObjectMeta(
                 name=PERSISTENT_VOLUME_CLAIM_NAME,
                 labels={
-                    "volume-claim-type": "monai"
+                    "volume-claim-type": MONAI
                 }
             ),
             spec=models.V1PersistentVolumeClaimSpec(
                 access_modes=[READ_WRITE_ONCE],
                 resources=models.V1ResourceRequirements(
                     requests={
-                        STORAGE: "10Gi",
+                        STORAGE: DEFAULT_STORAGE_SPACE,
                     }
                 ),
                 storage_class_name=STORAGE_CLASS_NAME,
@@ -155,52 +167,86 @@ class KubernetesHandler:
 
         return persistent_volume_claim
 
-    def create_kubernetes_job(self):
-        pv = self.__create_kubernetes_persistent_volume()
+    def create_kubernetes_pod(self):
+        """Create a kubernetes pod and the Persistent Volume and Persistent Volume Claim needed by the pod.
+        """
+        # Create a Kubernetes Persistent Volume.
+        pv = self.__build_kubernetes_persistent_volume()
         self.kubernetes_core_client.create_persistent_volume(pv)
 
-        pvc = self.__create_kubernetes_persistent_volume_claim()
+        # Create a Kubernetes Persistent Volume Claim.
+        pvc = self.__build_kubernetes_persistent_volume_claim()
         self.kubernetes_core_client.create_namespaced_persistent_volume_claim(namespace=DEFAULT_NAMESPACE, body=pvc)
 
-        job = self.__create_kubernetes_job()
-
-        self.kubernetes_batch_client.create_namespaced_job(
+        # Create a Kubernetes Pod.
+        pod = self.__build_kubernetes_pod()
+        self.kubernetes_core_client.create_namespaced_pod(
             namespace=DEFAULT_NAMESPACE,
-            body=job
+            body=pod
         )
 
-    def delete_kubernetes_job(self):
-        self.kubernetes_batch_client.delete_namespaced_job(name=JOB_NAME, namespace=DEFAULT_NAMESPACE)
+    def delete_kubernetes_pod(self):
+        """Delete a kubernetes pod and the Persistent Volume and Persistent Volume Claim created for the pod.
+        """
+        # Delete the Kubernetes Pod, Persistent Volume Claim and Persistent Volume.
+        self.kubernetes_core_client.delete_namespaced_pod(name=POD_NAME, namespace=DEFAULT_NAMESPACE)
+        self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
+            namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
+        self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
 
-    def watch_kubernetes_job(self):
+    def watch_kubernetes_pod(self):
+        """Watch the status of kubernetes pod until it completes or it times out.
+
+        Returns:
+            PodStatus: Enum which denotes a pod status.
+        """
         polling_time = 1
-        total_sleep_time = 50
         current_sleep_time = 0
-        job_completed = False
-        succeeded = False
-        failed = False
-        running = False
+        status = PodStatus.Pending
 
-        while (current_sleep_time < total_sleep_time):
-            job = self.kubernetes_batch_client.read_namespaced_job(name=JOB_NAME, namespace=DEFAULT_NAMESPACE)
+        # Check every `polling_time` seconds if pod has completed(successfully/failed).
+        # If Pod does not complete within timeout, return last reported status(Pending/Running) of pod.
+        # If pod is in a pending state with ImagePullBackOff error, then quit checking for pod status
+        # and return error along with Pending status.
 
-            if (job.status is None):
+        while (current_sleep_time < WAIT_TIME_FOR_POD_COMPLETION):
+            pod = self.kubernetes_core_client.read_namespaced_pod(name=POD_NAME, namespace=DEFAULT_NAMESPACE)
+            if (pod.status is None):
                 continue
 
-            print(job.status)
+            pod_status = pod.status.phase
 
-            if (job.status.active == 1):
-                running = True
+            if (pod_status == "Pending"):
+                status = PodStatus.Pending
 
-            if (job.status.succeeded == 1):
-                succeeded = True
-                running = False
+                container_statuses = pod.status.container_statuses
+                if (container_statuses is None):
+                    continue
+
+                container_status = container_statuses[0]
+                if (container_status.state.waiting is not None and
+                        container_status.state.waiting.reason == "ImagePullBackOff"):
+                    print("Image Pull Back Off")
+                    break
+            elif (pod_status == "Running"):
+                status = PodStatus.Running
+            elif (pod_status == "Succeeded"):
+                status = PodStatus.Succeeded
                 break
-
-            if (job.status.failed == 1):
-                failed = True
-                running = False
+            elif (pod_status == "Failed"):
+                status = PodStatus.Failed
                 break
+            else:
+                print("Unknown pod status " + pod.status.phase)
 
             time.sleep(polling_time)
             current_sleep_time += polling_time
+
+        return status
+
+
+class PodStatus(enum.Enum):
+    Pending = 1,
+    Running = 2,
+    Succeeded = 3,
+    Failed = 4

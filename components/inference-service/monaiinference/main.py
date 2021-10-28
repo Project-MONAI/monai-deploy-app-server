@@ -21,14 +21,19 @@ app = FastAPI()
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--map-urn', type=str, required=True)
-    parser.add_argument('--map-entrypoint', type=str, required=True)
-    parser.add_argument('--map-cpu', type=str, required=True)
-    parser.add_argument('--map-memory', type=str, required=True)
-    parser.add_argument('--map-gpu', type=str, required=True)
-    parser.add_argument('--map-input-path', type=str, required=True)
-    parser.add_argument('--map-output-path', type=str, required=True)
-    parser.add_argument('--payload-host-path', type=str, required=True)
+    parser.add_argument('--map-urn', type=str, required=True,
+                        help="MAP Container <image>:<tag> to de deployed for inference")
+    parser.add_argument('--map-entrypoint', type=str, required=True, help="Entry point command for MAP Container")
+    parser.add_argument('--map-cpu', type=int, required=True, help="Maximum CPU cores needed by MAP Container")
+    parser.add_argument('--map-memory', type=int, required=True,
+                        help="Maximum memory in Megabytes needed by MAP Container")
+    parser.add_argument('--map-gpu', type=int, required=True, help="Maximum GPUs needed by MAP Container")
+    parser.add_argument('--map-input-path', type=str, required=True,
+                        help="Input directory path of MAP Container")
+    parser.add_argument('--map-output-path', type=str, required=True,
+                        help="Output directory path of MAP Container")
+    parser.add_argument('--payload-host-path', type=str, required=True,
+                        help="Host path of payload directory")
 
     args = parser.parse_args()
 
@@ -38,9 +43,24 @@ def main():
                                     args.map_gpu, args.map_input_path, args.map_output_path, args.payload_host_path)
 
     kubernetes_handler = handler.KubernetesHandler(service_config)
-    kubernetes_handler.create_kubernetes_job()
-    kubernetes_handler.watch_kubernetes_job()
-    kubernetes_handler.delete_kubernetes_job()
+
+    '''
+        TODO: This is to be incorporated in the FAST API endpoint
+        kubernetes_handler.create_kubernetes_pod()
+        pod_status = kubernetes_handler.watch_kubernetes_pod()
+
+        if (pod_status is handler.PodStatus.Pending):
+            print("Pod Pending")
+        elif (pod_status is handler.PodStatus.Running):
+            print("Pod Running")
+        elif (pod_status is handler.PodStatus.Succeeded):
+            print("Pod Completed")
+        elif (pod_status is handler.PodStatus.Failed):
+            print("Pod Failed")
+
+        kubernetes_handler.delete_kubernetes_pod()
+
+    '''
 
 
 if __name__ == "__main__":
