@@ -9,9 +9,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import enum
+import os
 import time
+from pathlib import Path
+
+from monaiinference.handler.config import ServerConfig
 
 from kubernetes import client
 from kubernetes.client import models
@@ -39,9 +42,15 @@ WAIT_TIME_FOR_POD_COMPLETION = 50
 
 
 class KubernetesHandler:
-    """KubernetesHandler is a class to handle interactions with kubernetes for fulflling an inference request."""
+    """Class to handle interactions with kubernetes for fulflling an inference request."""
 
-    def __init__(self, config):
+    def __init__(self, config: ServerConfig):
+        """Constructor of the base KubernetesHandler class
+
+        Args:
+            config (ServerConfig): Instance of ServerConfig class with MONAI Inference
+            configuration specifications
+        """
         # Initialize kubernetes client and handler configuration.
         self.kubernetes_core_client = client.CoreV1Api()
         self.config = config
@@ -58,8 +67,8 @@ class KubernetesHandler:
         return resources
 
     def __build_container_template(self) -> models.V1Container:
-        # Derive container input path for defining input mount.
-        input_path = os.path.join("/", self.config.map_input_path)
+        # Derive container POSIX input path for defining input mount.
+        input_path = Path(os.path.join("/", self.config.map_input_path)).as_posix()
 
         input_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
@@ -68,8 +77,8 @@ class KubernetesHandler:
             read_only=True
         )
 
-        # Derive container output path for defining output mount.
-        output_path = os.path.join("/", self.config.map_output_path)
+        # Derive container POSIX output path for defining output mount.
+        output_path = Path(os.path.join("/", self.config.map_output_path)).as_posix()
 
         output_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
