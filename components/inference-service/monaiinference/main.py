@@ -10,16 +10,25 @@
 # limitations under the License.
 
 import argparse
+import os
+from typing import Optional
 
-from fastapi import FastAPI
+import uvicorn
+from fastapi import FastAPI, File, UploadFile
+from fastapi.responses import FileResponse
 from kubernetes import config
+from starlette.routing import Host
 
-import handler
+from monaiinference.handler.config import ServerConfig
+from monaiinference.handler.kubernetes import KubernetesHandler, PodStatus
+from monaiinference.handler.payload import PayloadProvider
 
 app = FastAPI()
 
 
 def main():
+    """Driver method that parses arguements and intializes providers
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('--map-urn', type=str, required=True,
                         help="MAP Container <image>:<tag> to de deployed for inference")
@@ -34,34 +43,56 @@ def main():
                         help="Output directory path of MAP Container")
     parser.add_argument('--payload-host-path', type=str, required=True,
                         help="Host path of payload directory")
+    parser.add_argument('--host', type=str, required=False, default="127.0.0.1",
+                        help="Host path of payload directory")
+    parser.add_argument('--port', type=int, required=False, default=8000,
+                        help="Host path of payload directory")
 
     args = parser.parse_args()
 
     config.load_config()
 
-    service_config = handler.Config(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu, args.map_memory,
-                                    args.map_gpu, args.map_input_path, args.map_output_path, args.payload_host_path)
+    service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
+                            args.map_memory, args.map_gpu, args.map_input_path,
+                            args.map_output_path, args.payload_host_path)
 
-    kubernetes_handler = handler.KubernetesHandler(service_config)
+    kubernetes_handler = KubernetesHandler(service_config)
 
-    '''
-        TODO: This is to be incorporated in the FAST API endpoint
+    server_payload_provider = PayloadProvider(args.payload_host_path,
+                                              args.map_input_path,
+                                              args.map_output_path)
+
+    @app.post("/upload/")
+    async def upload_file(file: UploadFile=File(...)) -> FileResponse:
+        """Defines REST POST Endpoint for Uploading input payloads.
+        Will trigger inference job sequentially after uploading payload
+
+        Args:
+            file (UploadFile, optional): .zip file provided by user to be moved
+            and extracted in shared volume directory for input payloads. Defaults to File(...).
+
+        Returns:
+            FileResponse: Asynchronous object for FastAPI to stream compressed .zip folder with
+            the output payload from running the MONAI Application Package
+        """
+        await server_payload_provider.upload_input_payload(file)
         kubernetes_handler.create_kubernetes_pod()
         pod_status = kubernetes_handler.watch_kubernetes_pod()
 
-        if (pod_status is handler.PodStatus.Pending):
+        if (pod_status is PodStatus.Pending):
             print("Pod Pending")
-        elif (pod_status is handler.PodStatus.Running):
+        elif (pod_status is PodStatus.Running):
             print("Pod Running")
-        elif (pod_status is handler.PodStatus.Succeeded):
+        elif (pod_status is PodStatus.Succeeded):
             print("Pod Completed")
-        elif (pod_status is handler.PodStatus.Failed):
+        elif (pod_status is PodStatus.Failed):
             print("Pod Failed")
 
         kubernetes_handler.delete_kubernetes_pod()
 
-    '''
+        return server_payload_provider.stream_output_payload()
 
+    uvicorn.run(app, host=args.host, port=args.port)
 
 if __name__ == "__main__":
     main()

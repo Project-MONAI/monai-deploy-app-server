@@ -13,9 +13,9 @@ import setuptools
 import os
 
 release_version = "0.0.0"
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+long_description = ""
+# with open("README.md", "r") as fh:
+#     long_description = fh.read()
 
 # # Install required packages from requirements.txt file
 requirements_relative_path = "./requirements.txt"
@@ -34,7 +34,11 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://docs.nvidia.com/clara/deploy/",
     packages=setuptools.find_packages('.'),
-    entry_points={},
+    entry_points={
+        'console_scripts': [
+            'mis = monaiinference.main:main'
+        ]
+    },
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
