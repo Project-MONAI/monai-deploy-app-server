@@ -24,6 +24,8 @@ from monaiinference.handler.config import ServerConfig
 from monaiinference.handler.kubernetes import KubernetesHandler, PodStatus
 from monaiinference.handler.payload import PayloadProvider
 
+MIS_HOST = "127.0.0.1"
+
 logging_config = {
     'version': 1, 'disable_existing_loggers': True,
     'formatters': {'default': {'()': 'uvicorn.logging.DefaultFormatter',
@@ -62,10 +64,8 @@ def main():
                         help="Output directory path of MAP Container")
     parser.add_argument('--payload-host-path', type=str, required=True,
                         help="Host path of payload directory")
-    parser.add_argument('--host', type=str, required=False, default="127.0.0.1",
-                        help="Host path of payload directory")
     parser.add_argument('--port', type=int, required=False, default=8000,
-                        help="Host path of payload directory")
+                        help="Host port of MONAI Inference Service")
 
     args = parser.parse_args()
 
@@ -128,7 +128,7 @@ def main():
     print(f'MIS host: \"{args.host}\"')
     print(f'MIS port: \"{args.port}\"')
 
-    uvicorn.run(app, host=args.host, port=args.port, log_config=logging_config)
+    uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config)
 
 
 if __name__ == "__main__":

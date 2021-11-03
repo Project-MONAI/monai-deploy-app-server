@@ -21,6 +21,7 @@ long_description = ""
 requirements_relative_path = "./requirements.txt"
 package_folder = os.path.dirname(os.path.realpath(__file__))
 requirements_path = package_folder + requirements_relative_path
+install_requires = []
 if os.path.isfile(requirements_path):
     with open(requirements_path) as f:
         install_requires = f.read().splitlines()
@@ -33,6 +34,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://docs.nvidia.com/clara/deploy/",
+    install_requires=install_requires,
     packages=setuptools.find_packages('.'),
     entry_points={
         'console_scripts': [
