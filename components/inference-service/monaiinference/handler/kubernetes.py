@@ -12,6 +12,7 @@
 import enum
 import logging
 import os
+import traceback
 import time
 from pathlib import Path
 
@@ -182,29 +183,64 @@ class KubernetesHandler:
     def create_kubernetes_pod(self):
         """Create a kubernetes pod and the Persistent Volume and Persistent Volume Claim needed by the pod.
         """
-        # Create a Kubernetes Persistent Volume.
-        pv = self.__build_kubernetes_persistent_volume()
-        self.kubernetes_core_client.create_persistent_volume(pv)
 
-        # Create a Kubernetes Persistent Volume Claim.
-        pvc = self.__build_kubernetes_persistent_volume_claim()
-        self.kubernetes_core_client.create_namespaced_persistent_volume_claim(namespace=DEFAULT_NAMESPACE, body=pvc)
+        try:
+            # Create a Kubernetes Persistent Volume.
+            pv = self.__build_kubernetes_persistent_volume()
+            self.kubernetes_core_client.create_persistent_volume(pv)
+            logging.info(f'Created Persistent Volume {pv.metadata.name}')
+        except Exception as e:
+            logging.error(e, exc_info=True)
 
-        # Create a Kubernetes Pod.
-        pod = self.__build_kubernetes_pod()
-        self.kubernetes_core_client.create_namespaced_pod(
-            namespace=DEFAULT_NAMESPACE,
-            body=pod
-        )
+        try:
+            # Create a Kubernetes Persistent Volume Claim.
+            pvc = self.__build_kubernetes_persistent_volume_claim()
+            self.kubernetes_core_client.create_namespaced_persistent_volume_claim(namespace=DEFAULT_NAMESPACE, body=pvc)
+            logging.info(f'Created Persistent Volume Claim {pvc.metadata.name}')
+        except Exception as e:
+            logging.error(e, exc_info=True)
+            self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
+
+        try:
+            # Create a Kubernetes Pod.
+            pod = self.__build_kubernetes_pod()
+            self.kubernetes_core_client.create_namespaced_pod(
+                namespace=DEFAULT_NAMESPACE,
+                body=pod
+            )
+
+            logging.info(f'Created pod {pod.metadata.name}')
+        except Exception as e:
+            self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
+                namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
+            self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
+            logging.error(e, exc_info=True)
+
 
     def delete_kubernetes_pod(self):
         """Delete a kubernetes pod and the Persistent Volume and Persistent Volume Claim created for the pod.
         """
+
         # Delete the Kubernetes Pod, Persistent Volume Claim and Persistent Volume.
-        self.kubernetes_core_client.delete_namespaced_pod(name=POD_NAME, namespace=DEFAULT_NAMESPACE)
-        self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
+        try:
+            self.kubernetes_core_client.delete_namespaced_pod(name=POD_NAME, namespace=DEFAULT_NAMESPACE)
+            logging.info(f'Deleted pod {POD_NAME}')
+        except Exception as e:
+            logging.error(e, exc_info=True)
+
+        try:
+            self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
             namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
-        self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
+            logging.info(f'Deleted Persistent Volume Claim {PERSISTENT_VOLUME_CLAIM_NAME}')
+        except Exception as e:
+            logging.error(e, exc_info=True)
+
+        try:
+            self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
+            logging.info(f'Deleted Persistent Volume {PERSISTENT_VOLUME_NAME}')
+        except Exception as e:
+            logging.error(e, exc_info=True)
+
 
     def watch_kubernetes_pod(self):
         """Watch the status of kubernetes pod until it completes or it times out.
@@ -238,7 +274,7 @@ class KubernetesHandler:
                 container_status = container_statuses[0]
                 if (container_status.state.waiting is not None and
                         container_status.state.waiting.reason == "ImagePullBackOff"):
-                    logger.info("Image Pull Back Off")
+                    logger.warning(f'Pod {POD_NAME} in Pending State: Image Pull Back Off')
                     break
             elif (pod_status == "Running"):
                 status = PodStatus.Running
@@ -249,10 +285,12 @@ class KubernetesHandler:
                 status = PodStatus.Failed
                 break
             else:
-                logger.info("Unknown pod status " + pod.status.phase)
+                logger.warning(f'Unknown pod status {pod.status.phase}')
 
             time.sleep(polling_time)
             current_sleep_time += polling_time
+
+        logger.info(f'Pod status is {status} after {current_sleep_time} seconds')
 
         return status
 
