@@ -9,11 +9,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import zipfile
 
 from fastapi import File, UploadFile
 from fastapi.responses import FileResponse
+
+logger = logging.getLogger('MIS_Payload')
 
 
 class PayloadProvider:
@@ -54,6 +57,8 @@ class PayloadProvider:
 
         os.remove(target_path)
 
+        logger.info(f'Extracted {target_path} into {abs_input_path}')
+
     def stream_output_payload(self) -> FileResponse:
         """Compresses output payload directory and returns .zip as FileResponse object
 
@@ -62,7 +67,7 @@ class PayloadProvider:
             the output payload from running the MONAI Application Package
         """
         abs_output_path = os.path.join(self._host_path, self._output_path)
-        abs_zip_path = os.path.join(abs_output_path, 'output.zip')
+        abs_zip_path = os.path.join(self._host_path, 'output.zip')
 
         with zipfile.ZipFile(abs_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for root_dir, dirs, files in os.walk(abs_output_path):
@@ -70,5 +75,8 @@ class PayloadProvider:
                     zip_file.write(os.path.join(root_dir, file),
                                    os.path.relpath(os.path.join(root_dir, file),
                                    os.path.join(abs_output_path, '..')))
+
+            logger.info(f'Compressed {abs_output_path} into {abs_zip_path}')
+            logger.info(f'Returning stream of {abs_zip_path}')
 
         return FileResponse(abs_zip_path)

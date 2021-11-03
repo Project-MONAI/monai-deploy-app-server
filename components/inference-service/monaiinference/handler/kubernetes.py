@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import enum
+import logging
 import os
 import time
 from pathlib import Path
@@ -39,6 +40,8 @@ RESTART_POLICY_NEVER = "Never"
 STORAGE = "storage"
 STORAGE_CLASS_NAME = "monai-storage-class"
 WAIT_TIME_FOR_POD_COMPLETION = 50
+
+logger = logging.getLogger('MIS_Kubernetes')
 
 
 class KubernetesHandler:
@@ -235,7 +238,7 @@ class KubernetesHandler:
                 container_status = container_statuses[0]
                 if (container_status.state.waiting is not None and
                         container_status.state.waiting.reason == "ImagePullBackOff"):
-                    print("Image Pull Back Off")
+                    logger.info("Image Pull Back Off")
                     break
             elif (pod_status == "Running"):
                 status = PodStatus.Running
@@ -246,7 +249,7 @@ class KubernetesHandler:
                 status = PodStatus.Failed
                 break
             else:
-                print("Unknown pod status " + pod.status.phase)
+                logger.info("Unknown pod status " + pod.status.phase)
 
             time.sleep(polling_time)
             current_sleep_time += polling_time

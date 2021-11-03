@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import argparse
+import logging
 import os
 from typing import Optional
 
@@ -23,6 +24,24 @@ from monaiinference.handler.config import ServerConfig
 from monaiinference.handler.kubernetes import KubernetesHandler, PodStatus
 from monaiinference.handler.payload import PayloadProvider
 
+logging_config = {
+    'version': 1, 'disable_existing_loggers': True,
+    'formatters': {'default': {'()': 'uvicorn.logging.DefaultFormatter',
+                               'fmt': '%(levelprefix)s %(message)s', 'use_colors': None},
+                   'access': {'()': 'uvicorn.logging.AccessFormatter',
+                              'fmt': '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s'}},
+    'handlers': {'default': {'formatter': 'default', 'class': 'logging.StreamHandler', 'stream': 'ext://sys.stderr'},
+                 'access': {'formatter': 'access', 'class': 'logging.StreamHandler', 'stream': 'ext://sys.stdout'}},
+    'loggers': {'uvicorn': {'handlers': ['default'], 'level': 'INFO'},
+                'uvicorn.error': {'level': 'INFO', 'handlers': ['default'], 'propagate': True},
+                'uvicorn.access': {'handlers': ['access'], 'level': 'INFO', 'propagate': False},
+                'MIS_Main': {'handlers': ['default'], 'level': 'INFO'},
+                'MIS_Payload': {'handlers': ['default'], 'level': 'INFO'},
+                'MIS_Kubernetes': {'handlers': ['default'], 'level': 'INFO'}
+                },
+}
+
+logger = logging.getLogger('MIS_Main')
 app = FastAPI()
 
 
@@ -47,14 +66,14 @@ def main():
                         help="Host path of payload directory")
     parser.add_argument('--port', type=int, required=False, default=8000,
                         help="Host path of payload directory")
-
+    
     args = parser.parse_args()
 
     config.load_config()
 
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
-                            args.map_memory, args.map_gpu, args.map_input_path,
-                            args.map_output_path, args.payload_host_path)
+                                  args.map_memory, args.map_gpu, args.map_input_path,
+                                  args.map_output_path, args.payload_host_path)
 
     kubernetes_handler = KubernetesHandler(service_config)
 
@@ -80,19 +99,31 @@ def main():
         pod_status = kubernetes_handler.watch_kubernetes_pod()
 
         if (pod_status is PodStatus.Pending):
-            print("Pod Pending")
+            logger.info("Pod Pending")
         elif (pod_status is PodStatus.Running):
-            print("Pod Running")
+            logger.info("Pod Running")
         elif (pod_status is PodStatus.Succeeded):
-            print("Pod Completed")
+            logger.info("Pod Completed")
         elif (pod_status is PodStatus.Failed):
-            print("Pod Failed")
+            logger.info("Pod Failed")
 
         kubernetes_handler.delete_kubernetes_pod()
 
         return server_payload_provider.stream_output_payload()
 
-    uvicorn.run(app, host=args.host, port=args.port)
+    print(f'MAP URN: \"{args.map_urn}\"')
+    print(f'MAP entrypoint: \"{args.map_entrypoint}\"')
+    print(f'MAP cpu: \"{args.map_cpu}\"')
+    print(f'MAP memory: \"{args.map_memory}\"')
+    print(f'MAP gpu: \"{args.map_gpu}\"')
+    print(f'MAP input path: \"{args.map_input_path}\"')
+    print(f'MAP output path: \"{args.map_output_path}\"')
+    print(f'payload host path: \"{args.payload_host_path}\"')
+    print(f'MIS host: \"{args.host}\"')
+    print(f'MIS port: \"{args.port}\"')
+
+    uvicorn.run(app, host=args.host, port=args.port, log_config=logging_config)
+
 
 if __name__ == "__main__":
     main()
