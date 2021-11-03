@@ -64,7 +64,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--map-urn', type=str, required=True,
                         help="MAP Container <image>:<tag> to de deployed for inference")
-    parser.add_argument('--map-entrypoint', type=str, required=True, help="Entry point command for MAP Container")
+    parser.add_argument('--map-entrypoint', type=str, required=True,
+                        help="Entry point command for MAP Container")
     parser.add_argument('--map-cpu', type=int, required=True, help="Maximum CPU cores needed by MAP Container")
     parser.add_argument('--map-memory', type=int, required=True,
                         help="Maximum memory in Megabytes needed by MAP Container")
