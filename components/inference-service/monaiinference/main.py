@@ -11,11 +11,11 @@
 
 import argparse
 import logging
-import os
-from typing import Optional
-
+from typing import final
+import traceback
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from kubernetes import config
 from starlette.routing import Host
@@ -66,7 +66,7 @@ def main():
                         help="Host path of payload directory")
     parser.add_argument('--port', type=int, required=False, default=8000,
                         help="Host path of payload directory")
-    
+
     args = parser.parse_args()
 
     config.load_config()
@@ -74,9 +74,7 @@ def main():
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
                                   args.map_memory, args.map_gpu, args.map_input_path,
                                   args.map_output_path, args.payload_host_path)
-
     kubernetes_handler = KubernetesHandler(service_config)
-
     server_payload_provider = PayloadProvider(args.payload_host_path,
                                               args.map_input_path,
                                               args.map_output_path)
@@ -94,22 +92,30 @@ def main():
             FileResponse: Asynchronous object for FastAPI to stream compressed .zip folder with
             the output payload from running the MONAI Application Package
         """
-        await server_payload_provider.upload_input_payload(file)
-        kubernetes_handler.create_kubernetes_pod()
-        pod_status = kubernetes_handler.watch_kubernetes_pod()
 
-        if (pod_status is PodStatus.Pending):
-            logger.info("Pod Pending")
-        elif (pod_status is PodStatus.Running):
-            logger.info("Pod Running")
-        elif (pod_status is PodStatus.Succeeded):
-            logger.info("Pod Completed")
-        elif (pod_status is PodStatus.Failed):
-            logger.info("Pod Failed")
+        try:
+            await server_payload_provider.upload_input_payload(file)
+            kubernetes_handler.create_kubernetes_pod()
 
-        kubernetes_handler.delete_kubernetes_pod()
+            try:
+                pod_status = kubernetes_handler.watch_kubernetes_pod()
+            finally:
+                kubernetes_handler.delete_kubernetes_pod()
 
-        return server_payload_provider.stream_output_payload()
+            if (pod_status is PodStatus.Pending):
+                logger.error("Request timed out since MAP container's pod was in pending state after timeout")
+                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+            elif (pod_status is PodStatus.Running):
+                logger.error("Request timed out since MAP container's pod was in running state after timeout")
+                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in running state after timeout")
+            elif (pod_status is PodStatus.Failed):
+                logger.info("Request failed since MAP container's pod failed")
+                raise HTTPException(status_code=500, detail="Request failed since MAP container's pod failed")
+            elif (pod_status is PodStatus.Succeeded):
+                logger.info("MAP container's pod completed")
+                return server_payload_provider.stream_output_payload()
+        except Exception as e:
+            logging.error(e, exc_info=True)
 
     print(f'MAP URN: \"{args.map_urn}\"')
     print(f'MAP entrypoint: \"{args.map_entrypoint}\"')
