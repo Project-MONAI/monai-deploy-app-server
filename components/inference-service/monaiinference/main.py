@@ -11,11 +11,12 @@
 
 import argparse
 import logging
-from typing import final
-import traceback
+
+from starlette.middleware import Middleware
 import uvicorn
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from kubernetes import config
 from starlette.routing import Host
@@ -23,6 +24,8 @@ from starlette.routing import Host
 from monaiinference.handler.config import ServerConfig
 from monaiinference.handler.kubernetes import KubernetesHandler, PodStatus
 from monaiinference.handler.payload import PayloadProvider
+
+MIS_HOST = "0.0.0.0"
 
 logging_config = {
     'version': 1, 'disable_existing_loggers': True,
@@ -42,7 +45,17 @@ logging_config = {
 }
 
 logger = logging.getLogger('MIS_Main')
-app = FastAPI()
+app = FastAPI(
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ],
+)
 
 
 def main():
@@ -62,14 +75,12 @@ def main():
                         help="Output directory path of MAP Container")
     parser.add_argument('--payload-host-path', type=str, required=True,
                         help="Host path of payload directory")
-    parser.add_argument('--host', type=str, required=False, default="127.0.0.1",
-                        help="Host path of payload directory")
     parser.add_argument('--port', type=int, required=False, default=8000,
-                        help="Host path of payload directory")
+                        help="Host port of MONAI Inference Service")
 
     args = parser.parse_args()
 
-    config.load_config()
+    config.load_incluster_config()
 
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
                                   args.map_memory, args.map_gpu, args.map_input_path,
@@ -80,7 +91,7 @@ def main():
                                               args.map_output_path)
 
     @app.post("/upload/")
-    async def upload_file(file: UploadFile=File(...)) -> FileResponse:
+    async def upload_file(file: UploadFile = File(...)) -> FileResponse:
         """Defines REST POST Endpoint for Uploading input payloads.
         Will trigger inference job sequentially after uploading payload
 
@@ -104,10 +115,14 @@ def main():
 
             if (pod_status is PodStatus.Pending):
                 logger.error("Request timed out since MAP container's pod was in pending state after timeout")
-                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Request timed out since MAP container's pod was in pending state after timeout")
             elif (pod_status is PodStatus.Running):
                 logger.error("Request timed out since MAP container's pod was in running state after timeout")
-                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in running state after timeout")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Request timed out since MAP container's pod was in running state after timeout")
             elif (pod_status is PodStatus.Failed):
                 logger.info("Request failed since MAP container's pod failed")
                 raise HTTPException(status_code=500, detail="Request failed since MAP container's pod failed")
@@ -125,10 +140,10 @@ def main():
     print(f'MAP input path: \"{args.map_input_path}\"')
     print(f'MAP output path: \"{args.map_output_path}\"')
     print(f'payload host path: \"{args.payload_host_path}\"')
-    print(f'MIS host: \"{args.host}\"')
+    print(f'MIS host: \"{MIS_HOST}\"')
     print(f'MIS port: \"{args.port}\"')
 
-    uvicorn.run(app, host=args.host, port=args.port, log_config=logging_config)
+    uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config)
 
 
 if __name__ == "__main__":
