@@ -12,7 +12,6 @@
 import enum
 import logging
 import os
-import traceback
 import time
 from pathlib import Path
 
@@ -188,17 +187,17 @@ class KubernetesHandler:
             # Create a Kubernetes Persistent Volume.
             pv = self.__build_kubernetes_persistent_volume()
             self.kubernetes_core_client.create_persistent_volume(pv)
-            logging.info(f'Created Persistent Volume {pv.metadata.name}')
+            logger.info(f'Created Persistent Volume {pv.metadata.name}')
         except Exception as e:
-            logging.error(e, exc_info=True)
+            logger.error(e, exc_info=True)
 
         try:
             # Create a Kubernetes Persistent Volume Claim.
             pvc = self.__build_kubernetes_persistent_volume_claim()
             self.kubernetes_core_client.create_namespaced_persistent_volume_claim(namespace=DEFAULT_NAMESPACE, body=pvc)
-            logging.info(f'Created Persistent Volume Claim {pvc.metadata.name}')
+            logger.info(f'Created Persistent Volume Claim {pvc.metadata.name}')
         except Exception as e:
-            logging.error(e, exc_info=True)
+            logger.error(e, exc_info=True)
             self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
 
         try:
@@ -209,13 +208,12 @@ class KubernetesHandler:
                 body=pod
             )
 
-            logging.info(f'Created pod {pod.metadata.name}')
+            logger.info(f'Created pod {pod.metadata.name}')
         except Exception as e:
             self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
                 namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
             self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
-            logging.error(e, exc_info=True)
-
+            logger.error(e, exc_info=True)
 
     def delete_kubernetes_pod(self):
         """Delete a kubernetes pod and the Persistent Volume and Persistent Volume Claim created for the pod.
@@ -224,23 +222,22 @@ class KubernetesHandler:
         # Delete the Kubernetes Pod, Persistent Volume Claim and Persistent Volume.
         try:
             self.kubernetes_core_client.delete_namespaced_pod(name=POD_NAME, namespace=DEFAULT_NAMESPACE)
-            logging.info(f'Deleted pod {POD_NAME}')
+            logger.info(f'Deleted pod {POD_NAME}')
         except Exception as e:
-            logging.error(e, exc_info=True)
+            logger.error(e, exc_info=True)
 
         try:
             self.kubernetes_core_client.delete_namespaced_persistent_volume_claim(
-            namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
-            logging.info(f'Deleted Persistent Volume Claim {PERSISTENT_VOLUME_CLAIM_NAME}')
+                namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
+            logger.info(f'Deleted Persistent Volume Claim {PERSISTENT_VOLUME_CLAIM_NAME}')
         except Exception as e:
-            logging.error(e, exc_info=True)
+            logger.error(e, exc_info=True)
 
         try:
             self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
-            logging.info(f'Deleted Persistent Volume {PERSISTENT_VOLUME_NAME}')
+            logger.info(f'Deleted Persistent Volume {PERSISTENT_VOLUME_NAME}')
         except Exception as e:
-            logging.error(e, exc_info=True)
-
+            logger.error(e, exc_info=True)
 
     def watch_kubernetes_pod(self):
         """Watch the status of kubernetes pod until it completes or it times out.
