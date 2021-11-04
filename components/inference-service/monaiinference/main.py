@@ -11,11 +11,12 @@
 
 import argparse
 import logging
-from typing import final
 import traceback
-import uvicorn
+from threading import Lock
+from typing import final
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from kubernetes import config
 from starlette.routing import Host
@@ -43,7 +44,7 @@ logging_config = {
 
 logger = logging.getLogger('MIS_Main')
 app = FastAPI()
-
+request_mutex = Lock()
 
 def main():
     """Driver method that parses arguements and intializes providers
@@ -92,6 +93,15 @@ def main():
             FileResponse: Asynchronous object for FastAPI to stream compressed .zip folder with
             the output payload from running the MONAI Application Package
         """
+        logger.info("---NEW REQUEST--")
+
+        try:
+            if not request_mutex.acquire(False):
+                logger.info("Request rejected as MIS is currently servicing another request")
+                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+        except Exception as e:
+            logging.error(e, exc_info=True)
+            return
 
         try:
             await server_payload_provider.upload_input_payload(file)
@@ -116,6 +126,10 @@ def main():
                 return server_payload_provider.stream_output_payload()
         except Exception as e:
             logging.error(e, exc_info=True)
+        finally:
+            logger.info("RELEASING LOCK")
+            request_mutex.release()
+            
 
     print(f'MAP URN: \"{args.map_urn}\"')
     print(f'MAP entrypoint: \"{args.map_entrypoint}\"')

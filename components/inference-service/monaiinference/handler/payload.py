@@ -20,7 +20,7 @@ logger = logging.getLogger('MIS_Payload')
 
 
 class PayloadProvider:
-    """Class to handle interactions with payload I/O and Monai Inference Server
+    """Class to handle interactions with payload I/O and Monai Inference Service
     shared volumes"""
 
     def __init__(self, host_path: str, input_path: str, output_path: str):
