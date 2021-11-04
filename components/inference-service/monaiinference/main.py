@@ -11,12 +11,21 @@
 
 import argparse
 import logging
+<<<<<<< HEAD
 
 from starlette.middleware import Middleware
 import uvicorn
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+=======
+import traceback
+from threading import Lock
+from typing import final
+
+import uvicorn
+from fastapi import FastAPI, File, HTTPException, UploadFile
+>>>>>>> Add resource locking for concurrent requests
 from fastapi.responses import FileResponse
 from kubernetes import config
 from starlette.routing import Host
@@ -45,6 +54,7 @@ logging_config = {
 }
 
 logger = logging.getLogger('MIS_Main')
+<<<<<<< HEAD
 app = FastAPI(
     middleware=[
         Middleware(
@@ -56,6 +66,10 @@ app = FastAPI(
         )
     ],
 )
+=======
+app = FastAPI()
+request_mutex = Lock()
+>>>>>>> Add resource locking for concurrent requests
 
 
 def main():
@@ -87,12 +101,12 @@ def main():
                                   args.map_memory, args.map_gpu, args.map_input_path,
                                   args.map_output_path, args.payload_host_path)
     kubernetes_handler = KubernetesHandler(service_config)
-    server_payload_provider = PayloadProvider(args.payload_host_path,
-                                              args.map_input_path,
-                                              args.map_output_path)
+    payload_provider = PayloadProvider(args.payload_host_path,
+                                       args.map_input_path,
+                                       args.map_output_path)
 
     @app.post("/upload/")
-    async def upload_file(file: UploadFile = File(...)) -> FileResponse:
+    def upload_file(file: UploadFile=File(...)) -> FileResponse:
         """Defines REST POST Endpoint for Uploading input payloads.
         Will trigger inference job sequentially after uploading payload
 
@@ -104,9 +118,15 @@ def main():
             FileResponse: Asynchronous object for FastAPI to stream compressed .zip folder with
             the output payload from running the MONAI Application Package
         """
+        logger.info("/upload/ Request Received")
+        if not request_mutex.acquire(False):
+            logger.info("Request rejected as MIS is currently servicing another request")
+            raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+        else:
+            logger.info("Acquired resource lock")
 
         try:
-            await server_payload_provider.upload_input_payload(file)
+            payload_provider.upload_input_payload(file)
             kubernetes_handler.create_kubernetes_pod()
 
             try:
@@ -129,9 +149,12 @@ def main():
                 raise HTTPException(status_code=500, detail="Request failed since MAP container's pod failed")
             elif (pod_status is PodStatus.Succeeded):
                 logger.info("MAP container's pod completed")
-                return server_payload_provider.stream_output_payload()
+                return payload_provider.stream_output_payload()
         except Exception as e:
             logging.error(e, exc_info=True)
+        finally:
+            logger.info("Releasing resource lock")
+            request_mutex.release()
 
     print(f'MAP URN: \"{args.map_urn}\"')
     print(f'MAP entrypoint: \"{args.map_entrypoint}\"')

@@ -27,10 +27,10 @@ if os.path.isfile(requirements_path):
         install_requires = f.read().splitlines()
 
 setuptools.setup(
-    name="monai-inference-server",
+    name="monai-inference-service",
     author="MONAI Deploy",
     version=release_version,
-    description="MONAI Infrence Server",
+    description="MONAI Infrence Service",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://docs.nvidia.com/clara/deploy/",

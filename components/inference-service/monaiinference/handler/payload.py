@@ -20,7 +20,7 @@ logger = logging.getLogger('MIS_Payload')
 
 
 class PayloadProvider:
-    """Class to handle interactions with payload I/O and Monai Inference Server
+    """Class to handle interactions with payload I/O and Monai Inference Service
     shared volumes"""
 
     def __init__(self, host_path: str, input_path: str, output_path: str):
@@ -35,7 +35,7 @@ class PayloadProvider:
         self._input_path = input_path.strip('/')
         self._output_path = output_path.strip('/')
 
-    async def upload_input_payload(self, file: UploadFile=File(...)):
+    def upload_input_payload(self, file: UploadFile=File(...)):
         """Uploads and extracts input payload .zip provided by user to input folder within MIS container
 
         Args:
@@ -48,7 +48,7 @@ class PayloadProvider:
 
         target_path = f'{abs_input_path}/{file.filename}'
         f = open(f'{target_path}', 'wb')
-        content = await file.read()
+        content = file.file.read()
         f.write(content)
         f.close()
 
