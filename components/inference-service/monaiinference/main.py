@@ -69,7 +69,7 @@ def main():
 
     args = parser.parse_args()
 
-    config.load_config()
+    config.load_incluster_config()
 
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
                                   args.map_memory, args.map_gpu, args.map_input_path,
@@ -80,7 +80,7 @@ def main():
                                               args.map_output_path)
 
     @app.post("/upload/")
-    async def upload_file(file: UploadFile=File(...)) -> FileResponse:
+    async def upload_file(file: UploadFile = File(...)) -> FileResponse:
         """Defines REST POST Endpoint for Uploading input payloads.
         Will trigger inference job sequentially after uploading payload
 
@@ -125,7 +125,7 @@ def main():
     print(f'MAP input path: \"{args.map_input_path}\"')
     print(f'MAP output path: \"{args.map_output_path}\"')
     print(f'payload host path: \"{args.payload_host_path}\"')
-    print(f'MIS host: \"{args.host}\"')
+    print(f'MIS host: \"{MIS_HOST}\"')
     print(f'MIS port: \"{args.port}\"')
 
     uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config)
