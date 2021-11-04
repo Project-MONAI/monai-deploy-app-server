@@ -11,11 +11,12 @@
 
 import argparse
 import logging
-from typing import final
-import traceback
+
+from starlette.middleware import Middleware
 import uvicorn
 
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from kubernetes import config
 from starlette.routing import Host
@@ -24,7 +25,7 @@ from monaiinference.handler.config import ServerConfig
 from monaiinference.handler.kubernetes import KubernetesHandler, PodStatus
 from monaiinference.handler.payload import PayloadProvider
 
-MIS_HOST = "127.0.0.1"
+MIS_HOST = "0.0.0.0"
 
 logging_config = {
     'version': 1, 'disable_existing_loggers': True,
@@ -44,7 +45,17 @@ logging_config = {
 }
 
 logger = logging.getLogger('MIS_Main')
-app = FastAPI()
+app = FastAPI(
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ],
+)
 
 
 def main():
@@ -104,10 +115,14 @@ def main():
 
             if (pod_status is PodStatus.Pending):
                 logger.error("Request timed out since MAP container's pod was in pending state after timeout")
-                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Request timed out since MAP container's pod was in pending state after timeout")
             elif (pod_status is PodStatus.Running):
                 logger.error("Request timed out since MAP container's pod was in running state after timeout")
-                raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in running state after timeout")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Request timed out since MAP container's pod was in running state after timeout")
             elif (pod_status is PodStatus.Failed):
                 logger.info("Request failed since MAP container's pod failed")
                 raise HTTPException(status_code=500, detail="Request failed since MAP container's pod failed")
