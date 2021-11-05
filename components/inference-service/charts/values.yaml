@@ -1,0 +1,73 @@
+# Copyright 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for MONAI Inference Service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+images:
+  monaiInferenceService: monai-inference-service
+  monaiInferenceServiceTag: 0.1
+
+########################################################
+#   Configuration Values for MONAI Inference Service   #
+########################################################
+
+server:
+  names:
+    clusterRole: monai-inference-service-cluster-role
+    clusterRoleBinding: monai-inference-service-binding
+    deployment: monai-inference-service
+    service: monai-inference-service
+    serviceAccount: monai-inference-service-service-account
+    storageClass: monai-inference-service-storage-class
+    volume: monai-inference-service-payload-volume
+    volumeClaim: monai-inference-service-payload-volume-claim
+
+  volumeClaim:
+  serviceType: NodePort # Alternatively: ClusterIp if only in cluster clients will exist
+  nodePort: 32000
+  pullSecrets: []
+  targetPort: 8000
+
+  # Configuration for the payload service in the MONAI Inference Service.
+  payloadService:
+    # The path on the node running MONAI Inference Service where a payload will be stored.
+    # The input directory and output directory that are created by MONAI Inference Service
+    # will exist as a directory inside this path.
+    # (e.g. "/monai/payload/input").
+    hostVolumePath: "/monai/payload"
+
+  # MAP configuration.
+  map:
+    # MAP Container <image>:<tag> to de deployed by MONAI Inference Service.
+    # For example, urn: "ubuntu:latest"
+    urn: "<image>:<tag>"
+
+    # String value which defines entry point command for MAP Container.
+    # For example, entrypoint: "/bin/echo Hello"
+    entrypoint: ""
+
+    # Integer value which defines the CPU limit assigned to the MAP container.
+    cpu: 1
+
+    # Integer value in Megabytes which defines the Memory limit assigned to the MAP container.
+    # This value can not be less than 256.
+    memory: 8192
+
+    # Integer value which defines the number of GPUs assigned to the MAP container.
+    gpu: 0
+
+    # Input directory path of MAP Container
+    input: "/input"
+
+    # Output directory path of MAP Container
+    output: "/output"
+

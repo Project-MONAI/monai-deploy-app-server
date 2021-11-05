@@ -1,0 +1,75 @@
+# Copyright 2021 MONAI Consortium
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.server.names.deployment }}
+  labels:
+    app: {{ .Release.Name }}-inferenceservice
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-inferenceservice
+      chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+      release: {{ .Release.Name }}
+      heritage: {{ .Release.Service }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-inferenceservice
+        chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        release: {{ .Release.Name }}
+        heritage: {{ .Release.Service }}
+    spec:
+    {{- with .Values.images.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ .Values.server.names.serviceAccount }}
+      volumes:
+        - name: {{ .Release.Name }}-volume
+          persistentVolumeClaim:
+            claimName: {{ .Values.server.names.volumeClaim }}
+      containers:
+        - name: inference-service
+          image: "{{ .Values.images.monaiInferenceService }}:{{ .Values.images.monaiInferenceServiceTag }}"
+          imagePullPolicy: IfNotPresent
+          # Note that the container's payload storage path currently must be the same as the
+          # host path, since any persistent volumes created for the MAP containers must also
+          # point to the original host path.
+          args: [
+              "--map-urn", "{{ .Values.server.map.urn }}",
+              "--map-entrypoint", "{{ .Values.server.map.entrypoint }}",
+              "--map-cpu", "{{ .Values.server.map.cpu }}",
+              "--map-memory", "{{ .Values.server.map.memory }}",
+              "--map-gpu", "{{ .Values.server.map.gpu }}",
+              "--map-input-path", "{{ .Values.server.map.input }}",
+              "--map-output-path", "{{ .Values.server.map.output }}",
+              "--payload-host-path", "{{ .Values.server.payloadService.hostVolumePath }}",
+              "--port", "{{ .Values.server.targetPort }}"]
+          ports:
+          - name: apiservice-port
+            containerPort: {{ .Values.server.targetPort }}
+            protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.server.map.cpu }}
+              memory: "{{ .Values.server.map.memory }}Mi"
+              ephemeral-storage: "1Gi"
+            limits:
+              ephemeral-storage: "10Gi"
+          volumeMounts:
+            - mountPath: {{ .Values.server.payloadService.hostVolumePath }}
+              name: {{ .Release.Name }}-volume
