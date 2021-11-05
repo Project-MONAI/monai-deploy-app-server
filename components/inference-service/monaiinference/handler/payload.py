@@ -11,6 +11,7 @@
 
 import logging
 import os
+import shutil
 import zipfile
 
 from fastapi import File, UploadFile
@@ -44,17 +45,32 @@ class PayloadProvider:
         """
         abs_input_path = os.path.join(self._host_path, self._input_path)
         if not os.path.exists(abs_input_path):
+            # Create input payload directory if it does not exist
             os.mkdir(abs_input_path)
+        else:
+            # Clean input payload directory of any lingering content
+            PayloadProvider.clean_directory(abs_input_path)
 
+        abs_output_path = os.path.join(self._host_path, self._output_path)
+        if not os.path.exists(abs_output_path):
+            # Create output payload directory if it does not exist
+            os.mkdir(abs_output_path)
+        else:
+            # Clean output payload directory of any lingering content
+            PayloadProvider.clean_directory(abs_output_path)
+
+        # Read contents of .zip file arguement and write it to input payload folder
         target_path = f'{abs_input_path}/{file.filename}'
         f = open(f'{target_path}', 'wb')
         content = file.file.read()
         f.write(content)
         f.close()
 
+        # Extract contents of .zip into input payload folder
         with zipfile.ZipFile(target_path, 'r') as zip_ref:
             zip_ref.extractall(abs_input_path)
 
+        # Remove compressed input payload .zip file
         os.remove(target_path)
 
         logger.info(f'Extracted {target_path} into {abs_input_path}')
@@ -69,6 +85,7 @@ class PayloadProvider:
         abs_output_path = os.path.join(self._host_path, self._output_path)
         abs_zip_path = os.path.join(self._host_path, 'output.zip')
 
+        # Compress output payload directory into .zip file in root payload directory
         with zipfile.ZipFile(abs_zip_path, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for root_dir, dirs, files in os.walk(abs_output_path):
                 for file in files:
@@ -77,6 +94,28 @@ class PayloadProvider:
                                    os.path.join(abs_output_path, '..')))
 
             logger.info(f'Compressed {abs_output_path} into {abs_zip_path}')
-            logger.info(f'Returning stream of {abs_zip_path}')
 
-        return FileResponse(abs_zip_path)
+        # Move compressed .zip into output payload directory
+        target_zip_path = os.path.join(abs_output_path, 'output.zip')
+        shutil.move(abs_zip_path, target_zip_path)
+
+        # Return stream of resulting .zip file using the FastAPI FileResponse object
+        logger.info(f'Returning stream of {target_zip_path}')
+        return FileResponse(target_zip_path)
+
+    @staticmethod
+    def clean_directory(dir_path: str):
+        """Cleans contents of a directory, but does not delete directory itself
+
+        Args:
+            dir_path (str): Path to of directory to be cleaned
+        """
+
+        deletion_files = [f for f in os.listdir(dir_path)]
+
+        for f in deletion_files:
+            deletion_path = os.path.join(dir_path, f)
+            if os.path.isdir(deletion_path):
+                shutil.rmtree(deletion_path)
+            else:
+                os.remove(deletion_path)
