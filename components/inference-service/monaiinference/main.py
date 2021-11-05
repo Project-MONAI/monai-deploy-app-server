@@ -11,23 +11,14 @@
 
 import argparse
 import logging
-<<<<<<< HEAD
-
-from starlette.middleware import Middleware
-import uvicorn
-
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-=======
-import traceback
 from threading import Lock
-from typing import final
 
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
->>>>>>> Add resource locking for concurrent requests
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from kubernetes import config
+from starlette.middleware import Middleware
 from starlette.routing import Host
 
 from monaiinference.handler.config import ServerConfig
@@ -54,7 +45,6 @@ logging_config = {
 }
 
 logger = logging.getLogger('MIS_Main')
-<<<<<<< HEAD
 app = FastAPI(
     middleware=[
         Middleware(
@@ -66,10 +56,7 @@ app = FastAPI(
         )
     ],
 )
-=======
-app = FastAPI()
 request_mutex = Lock()
->>>>>>> Add resource locking for concurrent requests
 
 
 def main():
