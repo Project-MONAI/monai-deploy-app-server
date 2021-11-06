@@ -24,12 +24,12 @@ MIS supports following OS with **GPU/CUDA** enabled.
 
 To build the MIS container, you can simply run:
 ```bash
-   ./build.sh
+./build.sh
 ```
 
 To build the MIS container manually, you can run:
 ```bash
-   docker build -f dockerfile -t monai/inference-service:0.1 .
+docker build -f dockerfile -t monai/inference-service:0.1 .
 ```
 
 ### Helm Chart Configuration
@@ -77,8 +77,30 @@ TODO
 
 In order to install the helm chart, please run:
 ```bash
-   helm install monai-inference-service ./charts
+helm install monai-inference-service ./charts
 ```
 
-## Submitting inference requests
-TODO
+##  Submitting inference requests
+####  Making a request with `curl`
+
+With MIS running, a user can make an inference request to the service using the `/upload` POST endpoint with the **cluster IP** and **Port** from running `kubectl get svc` and a compressed .zip file containing all the input payload files (eg. input.zip)
+
+##### usage:
+
+
+curl -X 'POST' 'http://`INSERT CLUSER IP & PORT HERE`/upload/' 
+&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'accept: application/json'
+&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'Content-Type: multipart/form-data' 
+&nbsp; &nbsp;  &nbsp;  &nbsp; -F 'file=@`PATH TO INPUT PAYLOAD ZIP`;type=application/x-zip-compressed'
+&nbsp; &nbsp;  &nbsp;  &nbsp; -o output.zip
+
+##### example:
+```bash
+curl -X 'POST' 'http://10.97.138.32:8000/upload/' \
+   -H 'accept: application/json' \
+   -H 'Content-Type: multipart/form-data' \
+   -F 'file=@input.zip;type=application/x-zip-compressed' \
+   -o output.zip
+```
+
+To view the FastAPI generated UI for an instance of MIS, have the service running and then on any browser, navigate to `http://CLUSTER IP:PORT/docs` (eg. http://10.97.138.32:8000/docs)
