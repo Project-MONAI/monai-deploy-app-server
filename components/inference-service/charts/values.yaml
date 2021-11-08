@@ -13,7 +13,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 images:
-  monaiInferenceService: monai-inference-service
+  monaiInferenceService: monai/inference-service
   monaiInferenceServiceTag: 0.1
 
 ########################################################
@@ -31,7 +31,6 @@ server:
     volume: monai-inference-service-payload-volume
     volumeClaim: monai-inference-service-payload-volume-claim
 
-  volumeClaim:
   serviceType: NodePort # Alternatively: ClusterIp if only in cluster clients will exist
   nodePort: 32000
   pullSecrets: []
