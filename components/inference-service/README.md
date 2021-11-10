@@ -68,16 +68,23 @@ monai-inference-service   NodePort    10.97.138.32   <none>        8000:32000/TC
 Under the entry `monai-inference-service`, note the IP registered under the `CLUSTER-IP` section. This is the Cluster IP of the MIS.
 
 #### MIS Volume Host Path
-To register the host path on which the payload volume for the MAP resides, record the host path in the `hostVolumePath` field of the `payloadService` sub section of the `server` section.
+To register the host path on which the payload volume for the MAP resides, record the host path in the `hostVolumePath` field of the `payloadService` sub-section of the `server` section.
 
 #### MAP Configuration
-TODO
+The `map` sub-section in the `server` section has all the configuration values for the MAP.
+- urn: This represents the container "\<image\>:\<tag\>" to be deployed by MIS. For example, `urn: ubuntu:latest`.
+- entrypoint: String value which defines entry point command for MAP Container. For example, `entrypoint: "/bin/echo Hello"`.
+- cpu: Integer value which defines the CPU limit assigned to the MAP container. This value can not be less than 1. For example, `cpu: 1`.
+- memory: Integer value in Megabytes which defines the Memory limit assigned to the MAP container. This value can not be less than 256. For example, `memory: 8192`.
+- gpu: Integer value which defines the number of GPUs assigned to the MAP container. This value can not be less than 0. For example, `gpu: 0`.
+- input: Input directory path of MAP Container. For example, `input: "/input"`.
+- output: Output directory path of MAP Container. For example, `output: "/output"`.
 
 ### Helm Chart Deployment
 
 In order to install the helm chart, please run:
 ```bash
-helm install monai-inference-service ./charts
+helm install monai ./charts
 ```
 
 ##  Submitting inference requests
@@ -85,16 +92,16 @@ helm install monai-inference-service ./charts
 
 With MIS running, a user can make an inference request to the service using the `/upload` POST endpoint with the **cluster IP** and **Port** from running `kubectl get svc` and a compressed .zip file containing all the input payload files (eg. input.zip)
 
-##### usage:
+#### Usage:
 
 
-curl -X 'POST' 'http://`INSERT CLUSER IP & PORT HERE`/upload/' 
+curl -X 'POST' 'http://`INSERT CLUSER IP & PORT HERE`/upload/'
 &nbsp; &nbsp;  &nbsp;  &nbsp; -H 'accept: application/json'
-&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'Content-Type: multipart/form-data' 
+&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'Content-Type: multipart/form-data'
 &nbsp; &nbsp;  &nbsp;  &nbsp; -F 'file=@`PATH TO INPUT PAYLOAD ZIP`;type=application/x-zip-compressed'
 &nbsp; &nbsp;  &nbsp;  &nbsp; -o output.zip
 
-##### example:
+For example,
 ```bash
 curl -X 'POST' 'http://10.97.138.32:8000/upload/' \
    -H 'accept: application/json' \

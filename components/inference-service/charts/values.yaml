@@ -55,6 +55,7 @@ server:
     entrypoint: ""
 
     # Integer value which defines the CPU limit assigned to the MAP container.
+    # This value can not be less than 1.
     cpu: 1
 
     # Integer value in Megabytes which defines the Memory limit assigned to the MAP container.
@@ -62,6 +63,7 @@ server:
     memory: 8192
 
     # Integer value which defines the number of GPUs assigned to the MAP container.
+    # This value can not be less than 0.
     gpu: 0
 
     # Input directory path of MAP Container

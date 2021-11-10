@@ -82,6 +82,13 @@ def main():
 
     args = parser.parse_args()
 
+    if (args.map_cpu < 1):
+        raise Exception(f'MAP cpu value can not be less than 1, provided value is \"{args.map_cpu}\"')
+    if (args.map_gpu < 0):
+        raise Exception(f'MAP gpu value can not be less than 0, provided value is \"{args.map_gpu}\"')
+    if (args.map_memory < 256):
+        raise Exception(f'MAP memory value can not be less than 256, provided value is \"{args.map_memory}\"')
+
     config.load_incluster_config()
 
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
@@ -93,7 +100,7 @@ def main():
                                        args.map_output_path)
 
     @app.post("/upload/")
-    def upload_file(file: UploadFile=File(...)) -> FileResponse:
+    def upload_file(file: UploadFile = File(...)) -> FileResponse:
         """Defines REST POST Endpoint for Uploading input payloads.
         Will trigger inference job sequentially after uploading payload
 
@@ -108,7 +115,9 @@ def main():
         logger.info("/upload/ Request Received")
         if not request_mutex.acquire(False):
             logger.info("Request rejected as MIS is currently servicing another request")
-            raise HTTPException(status_code=500, detail="Request timed out since MAP container's pod was in pending state after timeout")
+            raise HTTPException(
+                status_code=500,
+                detail="Request timed out since MAP container's pod was in pending state after timeout")
         else:
             logger.info("Acquired resource lock")
 
