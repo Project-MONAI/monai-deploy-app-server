@@ -13,6 +13,7 @@ import logging
 import os
 import shutil
 import zipfile
+from pathlib import Path
 
 from fastapi import File, UploadFile
 from fastapi.responses import FileResponse
@@ -36,6 +37,17 @@ class PayloadProvider:
         self._input_path = input_path.strip('/')
         self._output_path = output_path.strip('/')
 
+        PayloadProvider.clean_directory(self._host_path)
+
+        abs_input_path = Path(os.path.join(self._host_path, self._input_path))
+        abs_input_path.mkdir(parents=True, exist_ok=True)
+        os.chmod(abs_input_path, 0o777)
+
+        abs_output_path = Path(os.path.join(self._host_path, self._output_path))
+        abs_output_path.mkdir(parents=True, exist_ok=True)
+        os.chmod(abs_output_path, 0o777)
+
+
     def upload_input_payload(self, file: UploadFile=File(...)):
         """Uploads and extracts input payload .zip provided by user to input folder within MIS container
 
@@ -43,21 +55,14 @@ class PayloadProvider:
             file (UploadFile, optional): .zip file provided by user to be moved
             and extracted in shared volume directory for input payloads. Defaults to File(...).
         """
+
         abs_input_path = os.path.join(self._host_path, self._input_path)
-        if not os.path.exists(abs_input_path):
-            # Create input payload directory if it does not exist
-            os.mkdir(abs_input_path)
-        else:
-            # Clean input payload directory of any lingering content
-            PayloadProvider.clean_directory(abs_input_path)
+        # Clean input payload directory of any lingering content
+        PayloadProvider.clean_directory(abs_input_path)
 
         abs_output_path = os.path.join(self._host_path, self._output_path)
-        if not os.path.exists(abs_output_path):
-            # Create output payload directory if it does not exist
-            os.mkdir(abs_output_path)
-        else:
-            # Clean output payload directory of any lingering content
-            PayloadProvider.clean_directory(abs_output_path)
+        # Clean output payload directory of any lingering content
+        PayloadProvider.clean_directory(abs_output_path)
 
         # Read contents of .zip file arguement and write it to input payload folder
         target_path = f'{abs_input_path}/{file.filename}'
