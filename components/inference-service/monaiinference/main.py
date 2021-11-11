@@ -75,6 +75,8 @@ def main():
                         help="Input directory path of MAP Container")
     parser.add_argument('--map-output-path', type=str, required=True,
                         help="Output directory path of MAP Container")
+    parser.add_argument('--map-model-path', type=str, required=False,
+                        help="Model directory path of MAP Container")
     parser.add_argument('--payload-host-path', type=str, required=True,
                         help="Host path of payload directory")
     parser.add_argument('--port', type=int, required=False, default=8000,
@@ -93,7 +95,7 @@ def main():
 
     service_config = ServerConfig(args.map_urn, args.map_entrypoint.split(' '), args.map_cpu,
                                   args.map_memory, args.map_gpu, args.map_input_path,
-                                  args.map_output_path, args.payload_host_path)
+                                  args.map_output_path, args.map_model_path, args.payload_host_path)
     kubernetes_handler = KubernetesHandler(service_config)
     payload_provider = PayloadProvider(args.payload_host_path,
                                        args.map_input_path,
@@ -159,6 +161,7 @@ def main():
     print(f'MAP gpu: \"{args.map_gpu}\"')
     print(f'MAP input path: \"{args.map_input_path}\"')
     print(f'MAP output path: \"{args.map_output_path}\"')
+    print(f'MAP model path: \"{args.map_model_path}\"')
     print(f'payload host path: \"{args.payload_host_path}\"')
     print(f'MIS host: \"{MIS_HOST}\"')
     print(f'MIS port: \"{args.port}\"')

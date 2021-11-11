@@ -55,8 +55,9 @@ spec:
               "--map-cpu", "{{ .Values.server.map.cpu }}",
               "--map-memory", "{{ .Values.server.map.memory }}",
               "--map-gpu", "{{ .Values.server.map.gpu }}",
-              "--map-input-path", "{{ .Values.server.map.input }}",
-              "--map-output-path", "{{ .Values.server.map.output }}",
+              "--map-input-path", "{{ .Values.server.map.inputPath }}",
+              "--map-output-path", "{{ .Values.server.map.outputPath }}",
+              "--map-model-path", "{{ .Values.server.map.modelPath }}",
               "--payload-host-path", "{{ .Values.server.payloadService.hostVolumePath }}",
               "--port", "{{ .Values.server.targetPort }}"]
           ports:
