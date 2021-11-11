@@ -89,6 +89,13 @@ class KubernetesHandler:
             sub_path=output_path[1:],
         )
 
+        # Build Shared Memory volume mount.
+        shared_memory_volume_mount = models.V1VolumeMount(
+            mount_path="/dev/shm",
+            name="shared-memory",
+            read_only=False
+        )
+
         # Build container object.
         container = models.V1Container(
             name=MAP,
@@ -96,7 +103,7 @@ class KubernetesHandler:
             command=self.config.map_entrypoint,
             image_pull_policy=IF_NOT_PRESENT,
             resources=self.__build_resources_requests(),
-            volume_mounts=[input_mount, output_mount]
+            volume_mounts=[input_mount, output_mount, shared_memory_volume_mount]
         )
 
         return container
@@ -124,6 +131,13 @@ class KubernetesHandler:
                         persistent_volume_claim=models.V1PersistentVolumeClaimVolumeSource(
                             claim_name=PERSISTENT_VOLUME_CLAIM_NAME,
                         ),
+                    ),
+                    models.V1Volume(
+                        name="shared-memory",
+                        empty_dir=models.V1EmptyDirVolumeSource
+                        (
+                            medium="Memory",
+                        )
                     )
                 ]
             )
