@@ -66,9 +66,18 @@ server:
     # This value can not be less than 0.
     gpu: 0
 
-    # Input directory path of MAP Container
-    input: "/input"
+    # Input directory path of MAP Container.
+    # An environment variable `MONAI_INPUTPATH` is mounted in the MAP container
+    # with it's value equal to the one provided for this field.
+    inputPath: "/var/monai/input"
 
-    # Output directory path of MAP Container
-    output: "/output"
+    # Output directory path of MAP Container.
+    # An environment variable `MONAI_OUTPUTPATH` is mounted in the MAP container
+    # with it's value equal to the one provided for this field.
+    outputPath: "/var/monai/output"
 
+    # Model directory path of MAP Container.
+    # For example, modelPath: /opt/monai/models.
+    # An environment variable `MONAI_MODELPATH` is mounted in the MAP container
+    # with it's value equal to the one provided for this field.
+    modelPath: ""

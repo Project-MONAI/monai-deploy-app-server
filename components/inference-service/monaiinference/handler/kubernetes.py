@@ -26,6 +26,9 @@ API_VERSION_FOR_PERSISTENT_VOLUME_CLAIM = "v1"
 DEFAULT_NAMESPACE = "default"
 DEFAULT_STORAGE_SPACE = "10Gi"
 DIRECTORY_OR_CREATE = "DirectoryOrCreate"
+ENV_MONAI_INPUTPATH="MONAI_INPUTPATH"
+ENV_MONAI_OUTPUTPATH="MONAI_OUTPUTPATH"
+ENV_MONAI_MODELPATH="MONAI_MODELPATH"
 IF_NOT_PRESENT = "IfNotPresent"
 MAP = "map"
 MONAI = "monai"
@@ -73,6 +76,7 @@ class KubernetesHandler:
         # Derive container POSIX input path for defining input mount.
         input_path = Path(os.path.join("/", self.config.map_input_path)).as_posix()
 
+        # Define input volume mount.
         input_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
             mount_path=input_path,
@@ -83,6 +87,7 @@ class KubernetesHandler:
         # Derive container POSIX output path for defining output mount.
         output_path = Path(os.path.join("/", self.config.map_output_path)).as_posix()
 
+        # Define output volume mount.
         output_mount = models.V1VolumeMount(
             name=PERSISTENT_VOLUME_CLAIM_NAME,
             mount_path=output_path,
@@ -96,12 +101,17 @@ class KubernetesHandler:
             read_only=False
         )
 
+        input_env = models.V1EnvVar(name=ENV_MONAI_INPUTPATH, value=self.config.map_input_path)
+        output_env = models.V1EnvVar(name=ENV_MONAI_OUTPUTPATH, value=self.config.map_output_path)
+        model_env = models.V1EnvVar(name=ENV_MONAI_MODELPATH, value=self.config.map_model_path)
+
         # Build container object.
         container = models.V1Container(
             name=MAP,
             image=self.config.map_urn,
             command=self.config.map_entrypoint,
             image_pull_policy=IF_NOT_PRESENT,
+            env=[input_env, output_env, model_env],
             resources=self.__build_resources_requests(),
             volume_mounts=[input_mount, output_mount, shared_memory_volume_mount]
         )

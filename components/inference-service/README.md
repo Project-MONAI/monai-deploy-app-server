@@ -77,8 +77,9 @@ The `map` sub-section in the `server` section has all the configuration values f
 - cpu: Integer value which defines the CPU limit assigned to the MAP container. This value can not be less than 1. For example, `cpu: 1`.
 - memory: Integer value in Megabytes which defines the Memory limit assigned to the MAP container. This value can not be less than 256. For example, `memory: 8192`.
 - gpu: Integer value which defines the number of GPUs assigned to the MAP container. This value can not be less than 0. For example, `gpu: 0`.
-- input: Input directory path of MAP Container. For example, `input: "/input"`.
-- output: Output directory path of MAP Container. For example, `output: "/output"`.
+- inputPath: Input directory path of MAP Container. For example, `inputPath: "/var/monai/input"`. An environment variable `MONAI_INPUTPATH` is mounted in the MAP container with it's value equal to the one provided for this field.
+- outputPath: Output directory path of MAP Container. For example, `outputPath: "/var/monai/output"`. An environment variable `MONAI_OUTPUTPATH` is mounted in the MAP container with it's value equal to the one provided for this field.
+- modelPath: Model directory path of MAP Container. For example, `modelPath: "/opt/monai/models"`. This is an optional field. An environment variable `MONAI_MODELPATH` is mounted in the MAP container with it's value equal to the one provided for this field.
 
 ### Helm Chart Deployment
 

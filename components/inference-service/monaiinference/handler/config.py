@@ -14,7 +14,7 @@ class ServerConfig:
     """Class that defines object to store MONAI Inference configuration specifications"""
 
     def __init__(self, map_urn: str, map_entrypoint: str, map_cpu: int, map_memory: int,
-                 map_gpu: int, map_input_path: str, map_output_path: str,
+                 map_gpu: int, map_input_path: str, map_output_path: str, map_model_path: str,
                  payload_host_path: str):
         """Constructor for Payload Provider class
 
@@ -26,6 +26,7 @@ class ServerConfig:
             map_gpu (int): Maximum GPUs needed by MAP Container
             map_input_path (str): Input directory path of MAP Container
             map_output_path (str): Output directory path of MAP Container
+            map_model_path (str): Model directory path of MAP Container
             payload_host_path (str): Host path of payload directory
         """
         self.map_urn = map_urn
@@ -35,4 +36,5 @@ class ServerConfig:
         self.map_gpu = map_gpu
         self.map_input_path = map_input_path
         self.map_output_path = map_output_path
+        self.map_model_path = map_model_path
         self.payload_host_path = payload_host_path
