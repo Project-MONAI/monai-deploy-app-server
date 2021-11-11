@@ -214,6 +214,7 @@ class KubernetesHandler:
             logger.info(f'Created Persistent Volume {pv.metadata.name}')
         except Exception as e:
             logger.error(e, exc_info=True)
+            raise e
 
         try:
             # Create a Kubernetes Persistent Volume Claim.
@@ -223,6 +224,7 @@ class KubernetesHandler:
         except Exception as e:
             logger.error(e, exc_info=True)
             self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
+            raise e
 
         try:
             # Create a Kubernetes Pod.
@@ -238,6 +240,7 @@ class KubernetesHandler:
                 namespace=DEFAULT_NAMESPACE, name=PERSISTENT_VOLUME_CLAIM_NAME)
             self.kubernetes_core_client.delete_persistent_volume(name=PERSISTENT_VOLUME_NAME)
             logger.error(e, exc_info=True)
+            raise e
 
     def delete_kubernetes_pod(self):
         """Delete a kubernetes pod and the Persistent Volume and Persistent Volume Claim created for the pod.
