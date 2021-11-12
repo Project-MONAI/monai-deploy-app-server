@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
-MONAI Inference Service(MIS) is a server that runs MONAI Application Packages (MAP)[https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md] in a Kubernetes cluster. It shares the same
+MONAI Inference Service(MIS) is a server that runs MONAI Application Packages [MAP](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md) in a [Kubernetes](https://kubernetes.io/) cluster. It shares the same
 principles with [MONAI](https://github.com/Project-MONAI).
 
 ## Features
@@ -19,6 +19,8 @@ principles with [MONAI](https://github.com/Project-MONAI).
 MIS supports following OS with **GPU/CUDA** enabled.
 
 - Ubuntu
+
+MIS is intended to be deployed as a microservice in a [Kubernetes](https://kubernetes.io/) cluster.
 
 ### Building the MIS Container
 
