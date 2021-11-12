@@ -7,7 +7,7 @@ The goal for this proposal is to enlist, prioritize and provide clarity on the r
 ## Success Criteria
 MIS SHALL provide a REST API for client to communicate with.
 
-MIS SHALL support configuration of the [MONAI Application Package(MAP)](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md]) used to service inference requests. 
+MIS SHALL support configuration of the [MONAI Application Package(MAP)](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md]) used to service inference requests.
 
 MIS SHALL provide an REST API to upload inputs to perform inferencing on.
 
