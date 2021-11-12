@@ -5,6 +5,15 @@
 MONAI Inference Service(MIS) is a server that runs MONAI Application Packages [MAP](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md) in a [Kubernetes](https://kubernetes.io/) cluster. It shares the same
 principles with [MONAI](https://github.com/Project-MONAI).
 
+## Glossary
+
+ 1. [Features](#features)
+ 2. [Installation](#installation)
+     - [Building the MIS Container](#building-the-mis-container)
+     - [Helm Chart Configuration](#helm-chart-configuration)
+     - [Helm Chart Deployment](#helm-chart-deployment)
+ 3. [Submitting Inference Requests](#submitting-inference-requests)
+
 ## Features
 
 > _The codebase is currently under active development._
@@ -70,7 +79,7 @@ monai-inference-service   NodePort    10.97.138.32   <none>        8000:32000/TC
 Under the entry `monai-inference-service`, note the IP registered under the `CLUSTER-IP` section. This is the Cluster IP of the MIS.
 
 #### MIS Volume Host Path
-To register the host path on which the payload volume for the MAP resides, record the host path in the `hostVolumePath` field of the `payloadService` sub-section of the `server` section.
+To register the host path on which the payload volume for the MAP resides, record the host path in the `hostVolumePath` field of the `payloadService` sub-section of the `server` section. Please make sure that this directory has read, write, and execute permissions for the user, group, and all other users `rwxrwxrwx` (Running `chmod 777 <hostVolumePath>` will achomplish this).
 
 #### MAP Configuration
 The `map` sub-section in the `server` section has all the configuration values for the MAP.
@@ -90,21 +99,21 @@ In order to install the helm chart, please run:
 helm install monai ./charts
 ```
 
-##  Submitting inference requests
+##  Submitting Inference Requests
 ####  Making a request with `curl`
 
-With MIS running, a user can make an inference request to the service using the `/upload` POST endpoint with the **cluster IP** and **Port** from running `kubectl get svc` and a compressed .zip file containing all the input payload files (eg. input.zip)
+With MIS running, a user can make an inference request to the service using the `/upload` POST endpoint with the **cluster IP** and **port** from running `kubectl get svc` and a compressed .zip file containing all the input payload files (eg. input.zip)
 
 #### Usage:
 
 
-curl -X 'POST' 'http://`INSERT CLUSER IP & PORT HERE`/upload/'
-&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'accept: application/json'
-&nbsp; &nbsp;  &nbsp;  &nbsp; -H 'Content-Type: multipart/form-data'
-&nbsp; &nbsp;  &nbsp;  &nbsp; -F 'file=@`PATH TO INPUT PAYLOAD ZIP`;type=application/x-zip-compressed'
-&nbsp; &nbsp;  &nbsp;  &nbsp; -o output.zip
+curl -X 'POST' 'http://`<CLUSTER IP>:8000 OR <HOST IP>:32000`/upload/' \\ \
+&nbsp;&nbsp;&nbsp;&nbsp;-H 'accept: application/json' \\ \
+&nbsp;&nbsp;&nbsp;&nbsp;-H 'Content-Type: multipart/form-data' \\ \
+&nbsp;&nbsp;&nbsp;&nbsp;-F 'file=@`<PATH TO INPUT PAYLOAD ZIP>`;type=application/x-zip-compressed' \\ \
+&nbsp;&nbsp;&nbsp;&nbsp;-o output.zip
 
-For example,
+For example:
 ```bash
 curl -X 'POST' 'http://10.97.138.32:8000/upload/' \
    -H 'accept: application/json' \
@@ -113,4 +122,4 @@ curl -X 'POST' 'http://10.97.138.32:8000/upload/' \
    -o output.zip
 ```
 
-To view the FastAPI generated UI for an instance of MIS, have the service running and then on any browser, navigate to `http://CLUSTER IP:PORT/docs` (eg. http://10.97.138.32:8000/docs)
+To view the FastAPI generated UI for an instance of MIS, have the service running and then on any browser, navigate to `http://HOST_IP:32000/docs` (ex. http://10.110.21.31:32000/docs)
