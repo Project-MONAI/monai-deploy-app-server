@@ -40,8 +40,10 @@ server:
   payloadService:
     # The path on the node running MONAI Inference Service where a payload will be stored.
     # The input directory and output directory that are created by MONAI Inference Service
-    # will exist as a directory inside this path.
+    # will exist as a directory inside this path. 
     # (e.g. "/monai/payload/input").
+    # Please make sure that this directory has read, write, and execute permissions for the user,
+    # group, and all other users `rwxrwxrwx`. Running `chmod 777 <hostVolumePath>` will achomplish this.
     hostVolumePath: "/monai/payload"
 
   # MAP configuration.
