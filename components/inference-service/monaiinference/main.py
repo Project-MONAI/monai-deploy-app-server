@@ -82,6 +82,22 @@ def main():
     parser.add_argument('--port', type=int, required=False, default=8000,
                         help="Host port of MONAI Inference Service")
 
+    # SSL Cert
+    parser.add_argument('--ssl-keyfile', type=str, required=False,
+                        help="SSL key file")
+    parser.add_argument('--ssl-certfile', type=str, required=False,
+                        help="SSL certificate file")
+    parser.add_argument('--ssl-keyfile-password', type=str, required=False,
+                        help="SSL keyfile password")
+    parser.add_argument('--ssl-version', type=int, required=False, default=17,
+                        help="SSL version to use")
+    parser.add_argument('--ssl-cert-reqs', type=int, required=False, default=0,
+                        help="Whether client certificate is required")
+    parser.add_argument('--ssl-ca-certs', type=str, required=False,
+                        help="CA certificates file")
+    parser.add_argument('--ssl-ciphers', type=str, required=False, default="TLSv1",
+                        help="Ciphers to use")
+           
     args = parser.parse_args()
 
     if (args.map_cpu < 1):
@@ -166,7 +182,11 @@ def main():
     print(f'MIS host: \"{MIS_HOST}\"')
     print(f'MIS port: \"{args.port}\"')
 
-    uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config)
+    if args.ssl_keyfile and args.ssl_certfile:
+        uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config,
+                    ssl_keyfile=args.ssl_keyfile, ssl_certfile=args.ssl_certfile)
+    else:
+        uvicorn.run(app, host=MIS_HOST, port=args.port, log_config=logging_config)
 
 
 if __name__ == "__main__":
