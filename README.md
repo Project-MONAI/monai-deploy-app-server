@@ -4,7 +4,7 @@
 
 💡 If you want to know more about MONAI Deploy WG vision, overall structure, and guidelines, please read [MONAI Deploy](https://github.com/Project-MONAI/monai-deploy) main repo first.
 
-# MONAI Deploy Application Server
+# MONAI Deploy Application Server (DEPRECATED - NOT TO BE USED NOR REFERENCED)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
 Application server that will run [MAPs](https://github.com/Project-MONAI/monai-deploy/blob/main/guidelines/monai-application-package.md) (MONAI Application Package).
